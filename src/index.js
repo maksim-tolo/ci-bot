@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 const connector = new builder.ChatConnector();
 const bot = new builder.UniversalBot(connector);
+const intents = new builder.IntentDialog();
 
 app.post('/api/messages', connector.listen());
 
@@ -17,32 +18,32 @@ function checkSession(profile) {
     return profile && profile.username && profile.password && profile.url;
 }
 
-
-bot.dialog('/', [
-    function (session, args, next) {
-        console.log('>>>>>>>>>>>>>>>', session.userData.profile);
-        if (!checkSession(session.userData.profile)) {
-            session.send('Hello, dear friend!');
-            session.beginDialog('/ensure-jenkins-profile', session.userData.profile);
-        } else {
-            console.log('NEXT', next);
-            next();
-        }
-    },
-    function (session, results) {
-        if (results.response) {
-            session.userData.profile = results.response;
-        }
-        const { username, password, url } = session.userData.profile;
-        const jenkinsService = new JenkinsService({ username, password, url });
-        jenkinsService.getServerInfo().then(() => {
-            session.send('Ok! I connected!');
-        }, () => {
-            session.send("Sorry, I can't connect :(");
-        });
+intents.onDefault([
+  function (session, args, next) {
+    console.log('>>>>>>>>>>>>>>>', session.userData.profile);
+    if (!checkSession(session.userData.profile)) {
+      session.send('Hello, dear friend!');
+      session.beginDialog('/ensure-jenkins-profile', session.userData.profile);
+    } else {
+      console.log('NEXT', next);
+      next();
     }
+  },
+  function (session, results) {
+    if (results.response) {
+      session.userData.profile = results.response;
+    }
+    const { username, password, url } = session.userData.profile;
+    const jenkinsService = new JenkinsService({ username, password, url });
+    jenkinsService.getServerInfo().then(() => {
+      session.send('Ok! I connected!');
+    }, () => {
+      session.send("Sorry, I can't connect :(");
+    });
+  }
 ]);
-bot.dialog('/ensure-jenkins-profile', [
+
+intents.dialog('/ensure-jenkins-profile', [
     function (session, args, next) {
         session.dialogData.profile = args || {};
         if (!session.dialogData.profile.url) {
@@ -77,4 +78,23 @@ bot.dialog('/ensure-jenkins-profile', [
         }
         session.endDialogWithResult({ response: session.dialogData.profile });
     }
+]);
+
+intents.matches(/^build/i, [
+  function (session) {
+    if (!checkSession(session.userData.profile)) {
+
+    } else {
+      session.beginDialog('/ensure-jenkins-profile', session.userData.profile);
+    }
+  },
+  function (session, results) {
+    session.send('Ok... Changed your name to %s', session.userData.name);
+  }
+]);
+
+intents.dialog('/manage-jenkins', [
+  function (session, args, next) {
+    
+  }
 ]);
