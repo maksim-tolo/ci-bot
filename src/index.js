@@ -38,9 +38,7 @@ intents.onDefault([
     if (results.response) {
       session.userData.profile = results.response;
     }
-    const { username, password, url } = session.userData.profile;
-    const jenkinsService = new JenkinsService({ username, password, url });
-    jenkinsService.getServerInfo().then(() => {
+    session.userData.profile.ciService.getServerInfo().then(() => {
       session.send('Ok! I connected!');
     }).catch(() => {
       session.send("Sorry, I can't connect :(");
@@ -48,7 +46,7 @@ intents.onDefault([
   }
 ]);
 
-intents.dialog('/configure-jenkins', [
+bot.dialog('/configure-jenkins', [
     function (session, args, next) {
         session.dialogData.profile = args || {};
         if (!session.dialogData.profile.url) {
