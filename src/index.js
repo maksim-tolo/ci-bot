@@ -9,6 +9,8 @@ const connector = new builder.ChatConnector();
 const bot = new builder.UniversalBot(connector);
 const intents = new builder.IntentDialog();
 
+let ciService;
+
 app.post('/api/messages', connector.listen());
 
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
@@ -19,7 +21,8 @@ function isJenkinsConfigured(profile) {
 
 function setCiService(session) {
   const {username, password, url} = session.dialogData.profile;
-  session.dialogData.profile.ciService = new JenkinsService({username, password, url});
+
+  ciService = new JenkinsService({username, password, url});
 }
 
 bot.dialog('/', intents);
@@ -37,7 +40,7 @@ intents.onDefault([
     if (results.response) {
       session.userData.profile = results.response;
     }
-    session.userData.profile.ciService.getServerInfo().then(() => {
+    ciService.getServerInfo().then(() => {
       session.send('Ok! I connected!');
     }).catch(() => {
       session.send("Sorry, I can't connect :(");
@@ -49,7 +52,7 @@ bot.dialog('/configure-jenkins', [
     function (session, args, next) {
         session.dialogData.profile = args || {};
         if (!session.dialogData.profile.url) {
-            builder.Prompts.text(session, 'Please, enter Jenkins url?');
+            builder.Prompts.text(session, 'Please, enter Jenkins url');
         } else {
             next();
         }
@@ -84,12 +87,31 @@ bot.dialog('/configure-jenkins', [
     }
 ]);
 
-intents.matches(/^build/i, [
+intents.matches(/build/i, [
   function (session) {
     if (!isJenkinsConfigured(session.userData.profile)) {
-
-    } else {
+      session.send('Sorry, but jenkins is not configured');
       session.beginDialog('/configure-jenkins', session.userData.profile);
+    } else {
+        if (session.message.text.match(/info/i)) {
+            const match = session.message.text.match(/(\b\w+\b)\s*(\d+)/i);
+
+            if (match) {
+              const [, jobName, buildNumber] = match;
+
+              ciService.getBuildInfo(jobName, buildNumber)
+                .then((response) => session.send(JSON.stringify(response)));
+            }
+        } else if (session.message.text.match(/run/i)) {
+          const match = session.message.text.match(/run\s(\w+)/i);
+
+          if (match) {
+            const [, jobName] = match;
+
+            ciService.runBuild(jobName)
+            .then(() => session.send(`${jobName} build started!`));
+          }
+        }
     }
   }
 ]);

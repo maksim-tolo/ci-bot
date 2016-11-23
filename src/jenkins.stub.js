@@ -181,6 +181,10 @@ class JenkinsService {
   getListOfJobs() {
     return Promise.resolve(JOBS_LIST);
   }
+
+  runBuild() {
+    return Promise.resolve({});
+  }
 }
 
 module.exports = JenkinsService;
