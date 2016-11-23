@@ -13,19 +13,24 @@ app.post('/api/messages', connector.listen());
 
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
 
-function checkSession(profile) {
-    console.log('OKKKKKKKKKKKK');
-    return profile && profile.username && profile.password && profile.url;
+function isJenkinsConfigured(profile) {
+  return profile && profile.username && profile.password && profile.url;
 }
+
+function setCiService(session) {
+  const {username, password, url} = session.dialogData.profile;
+
+  session.dialogData.profile.ciService = new JenkinsService({username, password, url});
+}
+
+bot.dialog('/', intents);
 
 intents.onDefault([
   function (session, args, next) {
-    console.log('>>>>>>>>>>>>>>>', session.userData.profile);
-    if (!checkSession(session.userData.profile)) {
+    if (!isJenkinsConfigured(session.userData.profile)) {
       session.send('Hello, dear friend!');
-      session.beginDialog('/ensure-jenkins-profile', session.userData.profile);
+      session.beginDialog('/configure-jenkins', session.userData.profile);
     } else {
-      console.log('NEXT', next);
       next();
     }
   },
@@ -37,13 +42,13 @@ intents.onDefault([
     const jenkinsService = new JenkinsService({ username, password, url });
     jenkinsService.getServerInfo().then(() => {
       session.send('Ok! I connected!');
-    }, () => {
+    }).catch(() => {
       session.send("Sorry, I can't connect :(");
     });
   }
 ]);
 
-intents.dialog('/ensure-jenkins-profile', [
+intents.dialog('/configure-jenkins', [
     function (session, args, next) {
         session.dialogData.profile = args || {};
         if (!session.dialogData.profile.url) {
@@ -76,25 +81,24 @@ intents.dialog('/ensure-jenkins-profile', [
         if (results.response) {
             session.dialogData.profile.password = results.response;
         }
+
+        setCiService(session);
         session.endDialogWithResult({ response: session.dialogData.profile });
     }
 ]);
 
 intents.matches(/^build/i, [
   function (session) {
-    if (!checkSession(session.userData.profile)) {
+    if (!isJenkinsConfigured(session.userData.profile)) {
 
     } else {
-      session.beginDialog('/ensure-jenkins-profile', session.userData.profile);
+      session.beginDialog('/configure-jenkins', session.userData.profile);
     }
-  },
-  function (session, results) {
-    session.send('Ok... Changed your name to %s', session.userData.name);
   }
 ]);
 
 intents.dialog('/manage-jenkins', [
   function (session, args, next) {
-    
+
   }
 ]);
