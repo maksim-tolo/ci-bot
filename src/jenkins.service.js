@@ -1,13 +1,19 @@
 const Jenkins = require('jenkins');
 
 class JenkinsService {
-  constructor({baseUrl, crumbIssuer, headers} = {}) {
+  constructor({url, username, password, crumbIssuer, headers} = {}) {
     this.api = Jenkins({
-      baseUrl,
+      baseUrl: this.getBaseUrl(url, username, password),
       crumbIssuer,
       headers,
       promisify: true
     });
+  }
+
+  getBaseUrl(url, username, password) {
+    const protocol = url.match(/http:\/\//) ? 'http://' : 'https://';
+
+    return `${protocol}${username}:${password}@${url.replace(/https?:\/\//, '')}`;
   }
 
   getServerInfo() {

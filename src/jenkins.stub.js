@@ -32,6 +32,10 @@ const SERVER_INFO = {
   ]
 };
 
+const SERVER_INFO_ERROR = {
+  message: 'Server connection failure'
+};
+
 const BUILD_INFO = {
   "actions": [],
   "buildable": true,
@@ -152,9 +156,18 @@ const JOBS_LIST = [
   }
 ];
 
+const VALID_PASSWORD = '123456';
+
 class JenkinsService {
+  constructor({url, username, password}) {
+    this.url = url;
+    this.username = username;
+    this.password = password;
+    this.isConnected = this.password === VALID_PASSWORD;
+  }
+
   getServerInfo() {
-    return Promise.resolve(SERVER_INFO);
+    return this.isConnected ? Promise.resolve(SERVER_INFO) : Promise.reject(SERVER_INFO_ERROR);
   }
 
   getBuildInfo() {
