@@ -19,7 +19,6 @@ function isJenkinsConfigured(profile) {
 
 function setCiService(session) {
   const {username, password, url} = session.dialogData.profile;
-
   session.dialogData.profile.ciService = new JenkinsService({username, password, url});
 }
 
@@ -95,8 +94,24 @@ intents.matches(/^build/i, [
   }
 ]);
 
-intents.dialog('/manage-jenkins', [
+bot.dialog('/manage-jenkins', [
   function (session, args, next) {
-
+    builder.Prompts.choice(session, 'What can I do for you?', ['Show server info', 'Show build info']);
+  },
+  function (session, results) {
+    switch (results.repsonse.entity) {
+      case 'Show server info':
+        session.userData.profile.jenkinsService.getServerInfo().then(data => {
+          session.send(data);
+        });
+        break;
+      case 'Show build info':
+        session.userData.profile.jenkinsService.getBuildInfo().then(data => {
+          session.send(data);
+        });
+        break;
+      default:
+        break;
+    }
   }
 ]);
