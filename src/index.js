@@ -1,5 +1,6 @@
 const express = require('express');
 const builder = require('botbuilder');
+const JenkinsService = require('./jenkins.stub');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,18 +12,37 @@ app.post('/api/messages', connector.listen());
 
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
 
+function checkSession(profile) {
+    console.log('OKKKKKKKKKKKK');
+    return profile && profile.username && profile.password && profile.url;
+}
+
 
 bot.dialog('/', [
-    function (session) {
-        session.send('Hello, dear friend!');
-        session.beginDialog('/ensureJenkinsProfile', session.userData);
+    function (session, args, next) {
+        console.log('>>>>>>>>>>>>>>>', session.userData.profile);
+        if (!checkSession(session.userData.profile)) {
+            session.send('Hello, dear friend!');
+            session.beginDialog('/ensure-jenkins-profile', session.userData.profile);
+        } else {
+            console.log('NEXT', next);
+            next();
+        }
     },
     function (session, results) {
-        session.userData.profile = results.response;
-        session.send('Hello %(username)s! It is your password - %(password)s! Ha-ha! Url - %(url)s', session.userData.profile);
+        if (results.response) {
+            session.userData.profile = results.response;
+        }
+        const { username, password, url } = session.userData.profile;
+        const jenkinsService = new JenkinsService({ username, password, url });
+        jenkinsService.getServerInfo().then(() => {
+            session.send('Ok! I connected!');
+        }, () => {
+            session.send("Sorry, I can't connect :(");
+        });
     }
 ]);
-bot.dialog('/ensureJenkinsProfile', [
+bot.dialog('/ensure-jenkins-profile', [
     function (session, args, next) {
         session.dialogData.profile = args || {};
         if (!session.dialogData.profile.url) {
