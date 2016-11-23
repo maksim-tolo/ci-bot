@@ -28,7 +28,7 @@ function setCiService(session) {
 bot.dialog('/', intents);
 
 intents.onDefault([
-  function (session, args, next) {
+  function(session, args, next) {
     if (!isJenkinsConfigured(session.userData.profile)) {
       session.send('Hello, dear friend!');
       session.beginDialog('/configure-jenkins', session.userData.profile);
@@ -36,7 +36,7 @@ intents.onDefault([
       next();
     }
   },
-  function (session, results) {
+  function(session, results) {
     if (results.response) {
       session.userData.profile = results.response;
     }
@@ -49,91 +49,75 @@ intents.onDefault([
 ]);
 
 bot.dialog('/configure-jenkins', [
-    function (session, args, next) {
-        session.dialogData.profile = args || {};
-        if (!session.dialogData.profile.url) {
-            builder.Prompts.text(session, 'Please, enter Jenkins url');
-        } else {
-            next();
-        }
-    },
-    function (session, results, next) {
-        if (results.response) {
-            session.dialogData.profile.url = results.response;
-        }
-        if (!session.dialogData.profile.username) {
-            builder.Prompts.text(session, 'Please, enter your username for Jenkins?');
-        } else {
-            next();
-        }
-    },
-    function (session, results, next) {
-        if (results.response) {
-            session.dialogData.profile.username = results.response;
-        }
-        if (!session.dialogData.profile.password) {
-            builder.Prompts.text(session, 'Please, enter the password.');
-        } else {
-            next();
-        }
-    },
-    function (session, results) {
-        if (results.response) {
-            session.dialogData.profile.password = results.response;
-        }
-
-        setCiService(session);
-        session.endDialogWithResult({ response: session.dialogData.profile });
+  function(session, args, next) {
+    session.dialogData.profile = args || {};
+    if (!session.dialogData.profile.url) {
+      builder.Prompts.text(session, 'Please, enter Jenkins url');
+    } else {
+      next();
     }
+  },
+  function(session, results, next) {
+    if (results.response) {
+      session.dialogData.profile.url = results.response;
+    }
+    if (!session.dialogData.profile.username) {
+      builder.Prompts.text(session, 'Please, enter your username for Jenkins');
+    } else {
+      next();
+    }
+  },
+  function(session, results, next) {
+    if (results.response) {
+      session.dialogData.profile.username = results.response;
+    }
+    if (!session.dialogData.profile.password) {
+      builder.Prompts.text(session, 'Please, enter the password.');
+    } else {
+      next();
+    }
+  },
+  function(session, results) {
+    if (results.response) {
+      session.dialogData.profile.password = results.response;
+    }
+
+    setCiService(session);
+    session.endDialogWithResult({response: session.dialogData.profile});
+  }
 ]);
 
 intents.matches(/build/i, [
-  function (session) {
+  function(session) {
     if (!isJenkinsConfigured(session.userData.profile)) {
       session.send('Sorry, but jenkins is not configured');
       session.beginDialog('/configure-jenkins', session.userData.profile);
     } else {
-        if (session.message.text.match(/info/i)) {
-            const match = session.message.text.match(/(\b\w+\b)\s*(\d+)/i);
+      if (session.message.text.match(/info/i)) {
+        const match = session.message.text.match(/(\b\w+\b)\s*(\d+)/i);
 
-            if (match) {
-              const [, jobName, buildNumber] = match;
+        if (match) {
+          const [, jobName, buildNumber] = match;
 
-              ciService.getBuildInfo(jobName, buildNumber)
-                .then((response) => session.send(JSON.stringify(response)));
-            }
-        } else if (session.message.text.match(/run/i)) {
-          const match = session.message.text.match(/run\s(\w+)/i);
-
-          if (match) {
-            const [, jobName] = match;
-
-            ciService.runBuild(jobName)
-            .then(() => session.send(`${jobName} build started!`));
-          }
+          ciService.getBuildInfo(jobName, buildNumber)
+          .then((response) => {
+            session.send(JSON.stringify(response));
+            session.endDialog();
+          });
         }
-    }
-  }
-]);
+      } else if (session.message.text.match(/run/i)) {
+        const match = session.message.text.match(/run\s(\w+)/i);
 
-bot.dialog('/manage-jenkins', [
-  function (session, args, next) {
-    builder.Prompts.choice(session, 'What can I do for you?', ['Show server info', 'Show build info']);
-  },
-  function (session, results) {
-    switch (results.repsonse.entity) {
-      case 'Show server info':
-        session.userData.profile.jenkinsService.getServerInfo().then(data => {
-          session.send(data);
-        });
-        break;
-      case 'Show build info':
-        session.userData.profile.jenkinsService.getBuildInfo().then(data => {
-          session.send(data);
-        });
-        break;
-      default:
-        break;
+        if (match) {
+          const [, jobName] = match;
+
+          ciService.runBuild(jobName)
+          .then(() => {
+            session.send(`${jobName} build started!`);
+            session.endDialog();
+          });
+        }
+      }
     }
   }
 ]);
